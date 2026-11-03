@@ -1,0 +1,4 @@
+# Local development only. Copy to .dev.vars.
+# When set, requests from localhost to /host and /api/host are treated as this teacher
+# instead of requiring a Cloudflare Access JWT. Ignored on any non-localhost hostname.
+DEV_TEACHER_EMAIL=teacher@example.com

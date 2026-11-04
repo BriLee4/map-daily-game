@@ -15,7 +15,8 @@
     "db:migrate:remote": "wrangler d1 migrations apply globe-guess --remote",
     "data": "node scripts/build-countries.mjs",
     "test:protocol": "node tests/protocol.mjs",
-    "test:e2e": "node tests/e2e.cjs"
+    "test:e2e": "node tests/e2e.cjs",
+    "test:class": "node tests/class20.cjs"
   },
   "dependencies": {
     "jose": "^6.2.15",

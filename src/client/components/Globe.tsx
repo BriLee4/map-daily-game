@@ -96,8 +96,8 @@ function baseStyle(countries: CountryCollection): StyleSpecification {
         type: "heatmap",
         source: "heat",
         paint: {
-          "heatmap-weight": 1,
-          "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 2, 6, 3],
+          "heatmap-weight": ["get", "w"],
+          "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1.6, 6, 2],
           "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 30, 4, 45, 8, 70],
           "heatmap-opacity": 0.85,
           "heatmap-color": [
@@ -106,8 +106,8 @@ function baseStyle(countries: CountryCollection): StyleSpecification {
             0.15, "#4c1d95",
             0.35, "#c026d3",
             0.6, "#f97316",
-            0.85, "#facc15",
-            1, "#fffbeb",
+            0.8, "#facc15",
+            1, "#fef9c3",
           ],
         },
       },
@@ -231,7 +231,8 @@ export function Globe({ onPick, pin, heat, answerId, results, focus, resetKey, c
     if (!ready || !map) return;
     (map.getSource("heat") as GeoJSONSource).setData({
       type: "FeatureCollection",
-      features: (heat ?? []).map((p) => point(p, {})),
+      // ~1 for a handful of guesses, ~0.5 for 20, ~0.35 for 40: keeps hot spots readable at any class size
+      features: (heat ?? []).map((p, _, all) => point(p, { w: Math.max(0.3, Math.min(1, Math.sqrt(5 / all.length))) })),
     });
   }, [ready, heat]);
 
@@ -293,11 +294,17 @@ function frame(map: MLMap, pts: Position[]) {
   }
   const hyp = Math.hypot(x, y);
   const center: Position = hyp < 1e-9 && Math.abs(z) < 1e-9 ? pts[0] : [Math.atan2(y, x) / r, Math.atan2(z, hyp) / r];
-  const farKm = Math.max(300, ...pts.map((p) => haversineKm(center, p)));
+  const farKm = Math.max(250, ...pts.map((p) => haversineKm(center, p)));
   const h = map.getCanvas().clientHeight || 600;
   const w = map.getCanvas().clientWidth || 800;
-  // empirically ~10,000 km from centre to edge is visible at zoom 1.2 in a 600px-tall view
-  const zoom = 1.2 + Math.log2((10_000 * (Math.min(w, h) / 600)) / (farKm * 1.3));
+  // Measure the globe's on-screen radius at the current zoom (a point 1° from the centre sits
+  // R·sin(1°) px away), then pick the zoom where the farthest point lands ~85% of the way to the edge.
+  const c0 = map.project(map.getCenter());
+  const c1 = map.project([map.getCenter().lng, Math.max(-89, Math.min(89, map.getCenter().lat + (map.getCenter().lat > 0 ? -1 : 1)))]);
+  const radiusNow = Math.hypot(c1.x - c0.x, c1.y - c0.y) / Math.sin(Math.PI / 180);
+  const theta = Math.min(farKm / 6371, Math.PI / 2 - 0.15); // past ~80° the whole hemisphere is the target
+  const targetRadius = (0.85 * Math.min(w, h)) / 2 / Math.sin(theta);
+  const zoom = radiusNow > 0 ? map.getZoom() + Math.log2(targetRadius / radiusNow) : 1.4;
   map.flyTo({ center, zoom: Math.max(0.9, Math.min(4.5, zoom)), duration: 1600 });
 }
 

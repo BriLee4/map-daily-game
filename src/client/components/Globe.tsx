@@ -29,6 +29,10 @@ export interface GlobeProps {
   focus?: Position[] | null;
   /** when this changes, return to the neutral world view (e.g. new round) */
   resetKey?: string | number;
+  /** look-only globe (home page): no interaction, no controls, transparent background */
+  decorative?: boolean;
+  /** fly to this point at a zoom that shows the whole globe */
+  lookAt?: Position | null;
   className?: string;
 }
 
@@ -43,17 +47,19 @@ function cssVar(name: string, fallback: string) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 }
 
-function baseStyle(countries: CountryCollection): StyleSpecification {
+function baseStyle(countries: CountryCollection, decorative = false): StyleSpecification {
   return {
     version: 8,
     projection: { type: "globe" },
-    sky: {
+    sky: decorative
+      ? { "sky-color": "rgba(0,0,0,0)", "horizon-color": cssVar("--horizon", "#3b6fb6"), "fog-color": cssVar("--horizon", "#3b6fb6"), "atmosphere-blend": 0.6 }
+      : {
       "sky-color": cssVar("--sky", "#0b1530"),
       "horizon-color": cssVar("--horizon", "#3b6fb6"),
       "fog-color": cssVar("--horizon", "#3b6fb6"),
       "fog-ground-blend": 0.5,
       "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 5, 1, 7, 0],
-    },
+      },
     sources: {
       countries: { type: "geojson", data: countries as unknown as GeoJSON.FeatureCollection },
       heat: { type: "geojson", data: EMPTY },
@@ -118,7 +124,7 @@ function baseStyle(countries: CountryCollection): StyleSpecification {
         paint: {
           "circle-radius": 3,
           "circle-color": "#fff",
-          "circle-stroke-color": "#111",
+          "circle-stroke-color": cssVar("--text", "#1A1815"),
           "circle-stroke-width": 1,
           "circle-opacity": ["interpolate", ["linear"], ["zoom"], 1, 0.3, 4, 1],
         },
@@ -145,7 +151,7 @@ function baseStyle(countries: CountryCollection): StyleSpecification {
             "interpolate", ["linear"], ["get", "score"],
             0, "#dc2626", 1500, "#f97316", 3500, "#facc15", 4999, "#84cc16", 5000, "#16a34a",
           ],
-          "circle-stroke-color": ["case", ["get", "mine"], cssVar("--accent", "#2563eb"), "#111"],
+          "circle-stroke-color": ["case", ["get", "mine"], cssVar("--accent", "#2563eb"), cssVar("--surface", "#FFFDF8")],
           "circle-stroke-width": ["case", ["get", "mine"], 3, 1],
         },
       },
@@ -164,7 +170,7 @@ function baseStyle(countries: CountryCollection): StyleSpecification {
   };
 }
 
-export function Globe({ onPick, pin, heat, answerId, results, focus, resetKey, className }: GlobeProps) {
+export function Globe({ onPick, pin, heat, answerId, results, focus, resetKey, decorative, lookAt, className }: GlobeProps) {
   const el = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap | null>(null);
   const [ready, setReady] = useState(false);
@@ -178,18 +184,19 @@ export function Globe({ onPick, pin, heat, answerId, results, focus, resetKey, c
       if (disposed || !el.current) return;
       const m = new MLMap({
         container: el.current,
-        style: baseStyle(countries),
-        center: DEFAULT_CENTER,
-        zoom: DEFAULT_ZOOM,
-        minZoom: 0.8,
+        style: baseStyle(countries, decorative),
+        center: lookAt ?? DEFAULT_CENTER,
+        zoom: decorative ? 0 : DEFAULT_ZOOM,
+        minZoom: decorative ? -2 : 0.8,
         maxZoom: 9,
-        attributionControl: { compact: true, customAttribution: "Borders: Natural Earth" },
+        interactive: !decorative,
+        attributionControl: decorative ? false : { compact: true, customAttribution: "Borders: Natural Earth" },
         dragRotate: false,
         pitchWithRotate: false,
         touchPitch: false,
       });
       m.touchZoomRotate.disableRotation();
-      m.addControl(new NavigationControl({ showCompass: false }), "bottom-right");
+      if (!decorative) m.addControl(new NavigationControl({ showCompass: false }), "bottom-right");
       m.on("click", (e) => {
         // Ignore taps in space around the globe: off-surface points unproject to the horizon,
         // so they don't round-trip back to the pixel that was tapped.
@@ -263,11 +270,18 @@ export function Globe({ onPick, pin, heat, answerId, results, focus, resetKey, c
     map.flyTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM, duration: 1200 });
   }, [ready, resetKey]);
 
+  const lookKey = lookAt ? lookAt.join(",") : "";
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || !lookAt) return;
+    showWhole(map, lookAt);
+  }, [ready, lookKey]);
+
   // Camera: frame the guesses (and the answer, once revealed) so the class sees everything at once.
   const focusKey = JSON.stringify([focus ?? [], answerId ?? null]);
   useEffect(() => {
     const map = mapRef.current;
-    if (!ready || !map) return;
+    if (!ready || !map || decorative) return; // the demo globe keeps its whole-globe view
     const pts: Position[] = [...(focus ?? [])];
     const c = answerId ? getCountry(answerId) : undefined;
     if (c) {
@@ -306,6 +320,24 @@ function frame(map: MLMap, pts: Position[]) {
   const targetRadius = (0.85 * Math.min(w, h)) / 2 / Math.sin(theta);
   const zoom = radiusNow > 0 ? map.getZoom() + Math.log2(targetRadius / radiusNow) : 1.4;
   map.flyTo({ center, zoom: Math.max(0.9, Math.min(4.5, zoom)), duration: 1600 });
+}
+
+/** Measured on-screen globe radius at the current zoom (a point 1° from the centre sits R·sin(1°) px away). */
+function globeRadiusPx(map: MLMap): number {
+  const c = map.getCenter();
+  const c0 = map.project(c);
+  const c1 = map.project([c.lng, Math.max(-89, Math.min(89, c.lat + (c.lat > 0 ? -1 : 1)))]);
+  return Math.hypot(c1.x - c0.x, c1.y - c0.y) / Math.sin(Math.PI / 180);
+}
+
+const prefersReducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** Turn the globe to face `center`, zoomed so the whole globe fits the box. */
+function showWhole(map: MLMap, center: Position) {
+  const box = Math.min(map.getCanvas().clientWidth || 300, map.getCanvas().clientHeight || 300);
+  const r = globeRadiusPx(map);
+  const zoom = r > 0 ? map.getZoom() + Math.log2((0.46 * box) / r) : 0;
+  map.flyTo({ center, zoom, duration: prefersReducedMotion() ? 0 : 2400, essential: false });
 }
 
 function point(p: Position, properties: Record<string, unknown>): GeoJSON.Feature {

@@ -1,39 +1,28 @@
 :root {
-  --bg: #f6f4ee;
-  --surface: #ffffff;
-  --text: #1c1b18;
-  --muted: #6b675e;
-  --line: #e3dfd3;
-  --accent: #2563eb;
-  --accent-ink: #ffffff;
-  --good: #16a34a;
-  --warn: #dc2626;
-  --ocean: #1d4e89;
+  /* One light palette (your cream, near-black and terracotta), used in light and dark mode alike. */
+  color-scheme: light;
+  --bg: #F4F0E6;
+  --surface: #FFFDF8;
+  --text: #1A1815;
+  --muted: #6E675C;
+  --line: #E3DCCB;
+  --accent: #2F6F8F;
+  --accent-ink: #FFFFFF;
+  --good: #2E8B57;
+  --warn: #C2412D;
+  /* globe */
+  --ocean: #A9CADB;
   --land: #B05B36;
-  --border: #a39a80;
-  --answer: #22c55e;
-  --answer-line: #14532d;
-  --sky: #0b1530;
-  --horizon: #6aa2e8;
+  --border: #E9C6B0;
+  --answer: #4CAF72;
+  --answer-line: #1D5E37;
+  --sky: #EAF0F1;
+  --horizon: #CFE1EA;
   --radius: 14px;
-  --shadow: 0 1px 2px rgb(0 0 0 / 6%), 0 6px 24px rgb(0 0 0 / 6%);
-  font-family: "JetBrains Mono", monospace, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --shadow: 0 1px 2px rgb(60 45 20 / 5%), 0 6px 24px rgb(60 45 20 / 6%);
+  font-family: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   color: var(--text);
   background: var(--bg);
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #F4F0E6;
-    --surface: #1c1f25;
-    --text: #1A1815;
-    --muted: #9b978d;
-    --line: #2d3139;
-    --accent: #5b8cff;
-    --ocean: #0f2a4d;
-    --land: #c9c1a8;
-    --border: #7d7560;
-    --shadow: none;
-  }
 }
 
 * { box-sizing: border-box; }
@@ -174,9 +163,9 @@ input:focus-visible, select:focus-visible, .btn:focus-visible { outline: 3px sol
 .step .pname { font-weight: 800; font-size: 1.3rem; overflow-wrap: anywhere; }
 .step .pscore { color: var(--muted); font-weight: 700; }
 .step .block { background: var(--accent); color: var(--accent-ink); border-radius: 12px 12px 0 0; font-size: 2.4rem; font-weight: 900; display: grid; place-items: center; }
-.step-1 .block { height: 170px; background: #eab308; color: #1c1b18; }
-.step-2 .block { height: 120px; background: #94a3b8; color: #1c1b18; }
-.step-3 .block { height: 90px; background: #c2773a; color: #1c1b18; }
+.step-1 .block { height: 170px; background: #E9C46A; color: var(--text); }
+.step-2 .block { height: 120px; background: #CBD2D9; color: var(--text); }
+.step-3 .block { height: 90px; background: #DDA47E; color: var(--text); }
 .row-actions { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .row-actions.center { justify-content: center; }
 
@@ -218,3 +207,14 @@ input:focus-visible, select:focus-visible, .btn:focus-visible { outline: 3px sol
 .host-final .leaderboard { text-align: left; width: min(100%, 560px); margin: 0 auto; }
 .host-final .leaderboard li, .final-student .leaderboard li { background: var(--surface); border: 1px solid var(--line); }
 .final-student .leaderboard { text-align: left; }
+
+/* ---------- home page demo globe ---------- */
+.home-globe { position: relative; width: clamp(200px, 34vh, 280px); aspect-ratio: 1; margin: 0 auto 0.5rem; }
+.home-globe .globe { position: absolute; inset: 0; min-height: 0; background: transparent; }
+.home-globe-chip {
+  position: absolute; left: 50%; bottom: 2%; transform: translateX(-50%); margin: 0; white-space: nowrap;
+  background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 999px;
+  padding: 0.3em 0.9em; font-size: 0.95rem; box-shadow: var(--shadow); transition: background 0.3s, color 0.3s;
+}
+.home-globe-chip.revealed { background: var(--answer); border-color: transparent; color: #0b2e17; font-weight: 700; }
+@media (max-height: 640px) { .home-globe { width: 160px; } }

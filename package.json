@@ -1,5 +1,5 @@
 {
-  "name": "globe-guess",
+  "name": "daily-map-quiz",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -11,8 +11,8 @@
     "typegen": "wrangler types --strict-vars=false",
     "typecheck": "tsc -p tsconfig.worker.json && tsc -p tsconfig.app.json",
     "test": "node --test --experimental-strip-types src/shared/*.test.ts",
-    "db:migrate:local": "wrangler d1 migrations apply globe-guess --local",
-    "db:migrate:remote": "wrangler d1 migrations apply globe-guess --remote",
+    "db:migrate:local": "wrangler d1 migrations apply daily-map-quiz --local",
+    "db:migrate:remote": "wrangler d1 migrations apply daily-map-quiz --remote",
     "data": "node scripts/build-countries.mjs",
     "test:protocol": "node tests/protocol.mjs",
     "test:e2e": "node tests/e2e.cjs",

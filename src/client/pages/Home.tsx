@@ -10,7 +10,7 @@ export function Home() {
   return (
     <div className="home">
       <div className="home-text">
-        <h1 className="logo">Globe Guess</h1>
+        <h1 className="logo">Daily Map Quiz</h1>
         <p className="muted">Find the country on the globe. Closest guess wins.</p>
         <form
           className="card join-form"

@@ -1,4 +1,4 @@
-# 🌍 Globe Guess
+# 🌍 Daily Map Quiz
 
 A live geography game for classrooms. The teacher projects a game, students join on their
 Chromebooks with a code, and each round everyone races the clock to drop a pin on a 3D globe.
@@ -104,7 +104,7 @@ npm run test:e2e         # Playwright: one teacher and 3 students through a full
 
 1. Create the D1 database and paste the printed `database_id` into `wrangler.jsonc`:
    ```bash
-   npx wrangler d1 create globe-guess
+   npx wrangler d1 create daily-map-quiz
    ```
 2. Apply the database schema:
    ```bash
@@ -114,7 +114,7 @@ npm run test:e2e         # Playwright: one teacher and 3 students through a full
    ```bash
    npm run deploy
    ```
-   The game will be at `https://globe-guess.<your-subdomain>.workers.dev`.
+   The game will be at `https://daily-map-quiz.<your-subdomain>.workers.dev`.
 4. Protect the teacher side (next section) **before you use it with a class**. Until it's
    configured, `/api/host/*` returns an error, so nobody can create games.
 
@@ -129,8 +129,8 @@ Students need open access, and teachers need sign-in, so protect **paths**, not 
 1. Turn on Zero Trust for your account if you haven't (the Free plan covers up to 50 users).
 2. **Zero Trust → Access → Applications → Add an application → Self-hosted.**
 3. Add two public hostnames/paths for your workers.dev hostname:
-   - `globe-guess.<sub>.workers.dev` with path `host`
-   - `globe-guess.<sub>.workers.dev` with path `api/host`
+   - `daily-map-quiz.<sub>.workers.dev` with path `host`
+   - `daily-map-quiz.<sub>.workers.dev` with path `api/host`
 4. Add a policy, for example **Allow** with **Emails ending in** `@yourschool.org`, or a list of teacher
    emails. If your school uses Google Workspace or Microsoft 365, add it as a login method under
    **Settings → Authentication** so teachers sign in with their school account. Otherwise the

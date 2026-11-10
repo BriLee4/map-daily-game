@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "globe-guess",
+  "name": "daily-map-quiz",
   "main": "./src/worker/index.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
@@ -18,8 +18,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "globe-guess",
-      // Replace with the id printed by: npx wrangler d1 create globe-guess
+      "database_name": "daily-map-quiz",
+      // Replace with the id printed by: npx wrangler d1 create daily-map-quiz
       "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "migrations"
     }

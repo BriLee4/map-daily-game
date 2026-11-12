@@ -44,6 +44,9 @@ export default {
 
       // ----------------------------------------------------------- teacher routes (Access-protected)
       if (path.startsWith("/api/host/")) {
+        // Block cross-site use of the teacher's sign-in cookie (CSRF and cross-site WebSocket
+        // hijacking) before anything else: see sameOriginOk.
+        if (!sameOriginOk(request, url)) return err("Cross-site request refused", 403);
         const auth = await authenticateTeacher(request, env);
         if (!auth.ok) return err(auth.message, auth.status);
         const email = auth.email;
@@ -83,6 +86,22 @@ export default {
   },
 } satisfies ExportedHandler<Env>;
 
+/**
+ * Teacher routes are authorised by the Cloudflare Access cookie, which browsers may attach to
+ * requests started by other websites (Access leaves its SameSite attribute unset by default, and
+ * WebSocket upgrades are not covered by CORS). So:
+ * - anything that changes state or opens a live connection (non-GET, or a WebSocket upgrade) must
+ *   carry an Origin header equal to this site's origin. Browsers always send Origin on these.
+ * - a plain GET is refused only when it names a different Origin (same-site navigations and
+ *   downloads, like the CSV link, may send none).
+ */
+function sameOriginOk(request: Request, url: URL): boolean {
+  const origin = request.headers.get("origin");
+  const changesState = request.method !== "GET" || request.headers.get("upgrade")?.toLowerCase() === "websocket";
+  if (changesState) return origin === url.origin;
+  return origin === null || origin === url.origin;
+}
+
 /** Re-create the request for the Durable Object with only the headers we vouch for. */
 function forward(request: Request, role: "host" | "player", email?: string): Request {
   const headers = new Headers();
@@ -97,6 +116,9 @@ function forward(request: Request, role: "host" | "player", email?: string): Req
 
 async function createGame(request: Request, env: Env, email: string): Promise<Response> {
   let body: { mode?: string; countryIds?: unknown; rounds?: unknown; timerSeconds?: unknown };
+  // A JSON content type can't be sent by a plain cross-site HTML form (defence in depth).
+  if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json"))
+    return err("Expected a JSON request", 415);
   try {
     body = await request.json();
   } catch {

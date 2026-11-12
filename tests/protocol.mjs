@@ -3,8 +3,9 @@ const BASE = process.env.BASE ?? "http://localhost:5173", WSB = BASE.replace(/^h
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const assert = (c, m) => { if (!c) { console.error("FAIL:", m); process.exitCode = 1; } else console.log("ok -", m); };
 
-function client(path) {
-  const ws = new WebSocket(WSB + path);
+function client(path, origin = BASE) {
+  // Browsers always send Origin on WebSocket upgrades; Node's WebSocket needs it spelled out.
+  const ws = new WebSocket(WSB + path, origin ? { headers: { Origin: origin } } : undefined);
   const c = { ws, last: null, msgs: [], closed: null };
   ws.onmessage = (e) => { const m = JSON.parse(e.data); c.msgs.push(m); if (m.t === "state") c.last = m; };
   ws.onclose = (e) => (c.closed = e.code);
@@ -14,13 +15,33 @@ function client(path) {
   return c;
 }
 
-const res = await fetch(BASE + "/api/host/games", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ mode: "random", rounds: 2, timerSeconds: 10 }) });
+const JSON_SAME_SITE = { "content-type": "application/json", origin: BASE };
+const res = await fetch(BASE + "/api/host/games", { method: "POST", headers: JSON_SAME_SITE, body: JSON.stringify({ mode: "random", rounds: 2, timerSeconds: 10 }) });
 const { code } = await res.json();
 assert(res.status === 201 && /^[A-Z0-9]{6}$/.test(code), "create random game " + code);
 
 // validation
-const bad = await fetch(BASE + "/api/host/games", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ mode: "custom", countryIds: ["NOPE"], timerSeconds: 30 }) });
+const bad = await fetch(BASE + "/api/host/games", { method: "POST", headers: JSON_SAME_SITE, body: JSON.stringify({ mode: "custom", countryIds: ["NOPE"], timerSeconds: 30 }) });
 assert(bad.status === 400, "rejects unknown country");
+
+// ---- finding 1: cross-site use of the teacher's sign-in is refused
+const gameBody = JSON.stringify({ mode: "random", rounds: 1, timerSeconds: 10 });
+const xPost = await fetch(BASE + "/api/host/games", { method: "POST", headers: { "content-type": "application/json", origin: "https://evil.example" }, body: gameBody });
+assert(xPost.status === 403, "cross-site game creation refused (" + xPost.status + ")");
+const noOriginPost = await fetch(BASE + "/api/host/games", { method: "POST", headers: { "content-type": "application/json" }, body: gameBody });
+assert(noOriginPost.status === 403, "game creation without an Origin refused (" + noOriginPost.status + ")");
+const formPost = await fetch(BASE + "/api/host/games", { method: "POST", headers: { "content-type": "text/plain", origin: BASE }, body: gameBody });
+assert(formPost.status === 415, "non-JSON (form-style) game creation refused (" + formPost.status + ")");
+const xGet = await fetch(BASE + "/api/host/games", { headers: { origin: "https://evil.example" } });
+assert(xGet.status === 403, "cross-site read of game history refused (" + xGet.status + ")");
+const plainGet = await fetch(BASE + "/api/host/games");
+assert(plainGet.status === 200, "same-site read without Origin (e.g. CSV download link) still works (" + plainGet.status + ")");
+for (const [label, origin] of [["cross-site", "https://evil.example"], ["Origin-less", null]]) {
+  const hijack = client(`/api/host/party/${code}/ws`, origin);
+  await hijack.open.catch(() => {}); // refused: the upgrade fails
+  await sleep(600);
+  assert(hijack.ws.readyState !== WebSocket.OPEN && !hijack.last, `${label} teacher WebSocket refused`);
+}
 
 // forged host header from a student connection is ignored (Worker rebuilds headers)
 const forged = new WebSocket(WSB + `/api/party/${code}/ws?k=forgedforgedforged1`, { headers: { "X-GG-Role": "host", "X-GG-Email": "teacher@example.com" } });

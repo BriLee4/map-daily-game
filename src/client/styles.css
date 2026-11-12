@@ -246,7 +246,10 @@ h1, h2, .logo, .code, .prompt strong, .big-name, .pname, .round, .home-globe-chi
 h1, h2 { line-height: 1.35; }
 .home .logo { font-size: clamp(1.8rem, 4.2vw, 3rem); color: var(--accent); text-shadow: 4px 4px 0 var(--text); }
 .prompt { font-size: clamp(1rem, 2.4vw, 1.6rem); }
-.prompt .find { font-weight: 800; font-size: 1em; margin-right: 0.15em; }
+/* "Find" and the country name share the pixel font, size and baseline; "Find" just reads quieter */
+.prompt { line-height: 1.4; }
+.prompt .find, .prompt strong { font-family: var(--pixel); font-weight: 400; font-size: 1em; vertical-align: baseline; }
+.prompt .find { color: var(--muted); margin-right: 0.35em; }
 .round { font-size: 0.75rem; }
 .code { font-size: clamp(2.6rem, 7vw, 6rem); letter-spacing: 0.06em; color: var(--accent); text-shadow: 6px 6px 0 var(--text); }
 .big-name { font-size: clamp(1.4rem, 6vw, 2.4rem); }

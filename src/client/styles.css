@@ -89,6 +89,8 @@ input:focus-visible, select:focus-visible, .btn:focus-visible { outline: 3px sol
 .join-form label { font-weight: 600; }
 .code-input { font-size: 2rem; text-align: center; letter-spacing: 0.25em; font-weight: 700; text-transform: uppercase; }
 .teacher-link { margin-top: 1.4rem; color: var(--muted); }
+/* Sit on the dotted background, so give them full-strength ink and a bit more weight */
+.home-text > .muted, .home-text > .teacher-link { color: var(--text); font-weight: 600; font-size: 1.05rem; }
 .name-form { display: grid; gap: 0.8rem; width: min(100%, 380px); text-align: left; }
 .name-form input { font-size: 1.4rem; }
 .big-name { font-size: clamp(2rem, 8vw, 3.5rem); }

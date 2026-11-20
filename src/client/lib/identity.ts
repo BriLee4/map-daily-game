@@ -26,3 +26,5 @@ export function playerKey(): string {
 }
 export const lastName = () => safeGet("gg-name") ?? "";
 export const rememberName = (n: string) => safeSet("gg-name", n);
+export const lastAvatar = () => safeGet("gg-avatar");
+export const rememberAvatar = (a: string) => safeSet("gg-avatar", a);

@@ -19,9 +19,18 @@ export const LIMITS = {
   maxNameLength: 20,
 } as const;
 
+/** Icons a student can pick when joining; shown on their pin, the leaderboard and the podium. */
+export const AVATARS = [
+  "🦊", "🐼", "🐸", "🦁", "🐯", "🐨", "🐵", "🐧",
+  "🦉", "🐙", "🦄", "🐢", "🐳", "🦖", "🐝", "🦋",
+  "🐰", "🐶", "🐱", "🦒", "🐘", "🦩", "🐬", "🦔",
+] as const;
+export const DEFAULT_AVATAR = "🌍";
+
 export interface PublicPlayer {
   id: string;
   name: string;
+  avatar: string;
   score: number;
   connected: boolean;
   /** true once the player has a guess for the current round (question phase only) */
@@ -32,6 +41,7 @@ export interface PublicPlayer {
 export interface RoundResult {
   playerId: string;
   name: string;
+  avatar: string;
   guess: Position;
   km: number;
   score: number;
@@ -65,6 +75,7 @@ export interface PublicState {
 export interface YouState {
   id: string;
   name: string;
+  avatar: string;
   score: number;
   guess: Position | null;
   locked: boolean;
@@ -74,7 +85,7 @@ export interface YouState {
 
 // ---- client -> server ----
 export type ClientMessage =
-  | { t: "join"; name: string }
+  | { t: "join"; name: string; avatar?: string }
   | { t: "guess"; lng: number; lat: number }
   | { t: "lock" }
   // host only

@@ -40,7 +40,7 @@ export function Leaderboard({
         <li key={p.id} className={p.id === highlightId ? "me" : ""}>
           <span className="rank">{rank}</span>
           <span className="name">
-            {p.name}
+            <span className="avatar" aria-hidden="true">{p.avatar}</span> {p.name}
             {!p.connected && <span className="offline" title="Disconnected"> ·offline</span>}
           </span>
           {roundScores && <span className="delta">{roundScores.has(p.id) ? `+${fmt(roundScores.get(p.id)!)}` : "—"}</span>}

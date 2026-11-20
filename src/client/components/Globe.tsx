@@ -1,5 +1,5 @@
 import type * as GeoJSON from "geojson";
-import { Map as MLMap, NavigationControl, setWorkerUrl, type FilterSpecification, type GeoJSONSource, type StyleSpecification } from "maplibre-gl";
+import { Map as MLMap, Marker, NavigationControl, setWorkerUrl, type FilterSpecification, type GeoJSONSource, type StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 // MapLibre 6 finds its web worker relative to its own module URL, which breaks once Vite
 // pre-bundles / fingerprints it. The worker is self-contained, so hand Vite the file directly.
@@ -13,12 +13,16 @@ export interface GlobeResultLine {
   nearest?: Position;
   score: number;
   mine?: boolean;
+  /** player's avatar, drawn as a marker on the guess */
+  avatar?: string;
 }
 
 export interface GlobeProps {
   /** student can click to place a pin */
   onPick?: (p: Position) => void;
   pin?: Position | null;
+  /** draw the pin as this avatar instead of a plain dot */
+  pinAvatar?: string;
   /** anonymous guess points for the heat map */
   heat?: Position[] | null;
   /** highlight this country (answer) */
@@ -170,7 +174,7 @@ function baseStyle(countries: CountryCollection, decorative = false): StyleSpeci
   };
 }
 
-export function Globe({ onPick, pin, heat, answerId, results, focus, resetKey, decorative, lookAt, className }: GlobeProps) {
+export function Globe({ onPick, pin, pinAvatar, heat, answerId, results, focus, resetKey, decorative, lookAt, className }: GlobeProps) {
   const el = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap | null>(null);
   const [ready, setReady] = useState(false);
@@ -229,9 +233,24 @@ export function Globe({ onPick, pin, heat, answerId, results, focus, resetKey, d
     const map = mapRef.current;
     if (!ready || !map) return;
     (map.getSource("pin") as GeoJSONSource).setData(
-      pin ? { type: "FeatureCollection", features: [point(pin, {})] } : EMPTY,
+      pin && !pinAvatar ? { type: "FeatureCollection", features: [point(pin, {})] } : EMPTY,
     );
-  }, [ready, pin]);
+    if (!pin || !pinAvatar) return;
+    const m = new Marker({ element: avatarEl(pinAvatar, "pin") }).setLngLat(pin).addTo(map);
+    return () => void m.remove();
+  }, [ready, pin, pinAvatar]);
+
+  // Avatars on revealed guesses (HTML markers: emoji don't render through map glyphs).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const markers = (results ?? []).filter((r) => r.avatar).map((r) => {
+      const el = avatarEl(r.avatar!, r.mine ? "result mine" : "result");
+      el.style.borderColor = scoreColor(r.score);
+      return new Marker({ element: el }).setLngLat(r.guess).addTo(map);
+    });
+    return () => markers.forEach((m) => m.remove());
+  }, [ready, results]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -294,6 +313,20 @@ export function Globe({ onPick, pin, heat, answerId, results, focus, resetKey, d
   }, [ready, focusKey]);
 
   return <div ref={el} className={`globe ${className ?? ""}`} />;
+}
+
+function avatarEl(avatar: string, kind: string): HTMLElement {
+  const el = document.createElement("div");
+  el.className = "avatar-marker " + kind;
+  el.textContent = avatar;
+  el.setAttribute("aria-hidden", "true");
+  return el;
+}
+
+/** Same ramp as the result-dots layer. */
+function scoreColor(score: number): string {
+  const stops: [number, string][] = [[0, "#dc2626"], [1500, "#f97316"], [3500, "#facc15"], [4999, "#84cc16"], [5000, "#16a34a"]];
+  return [...stops].reverse().find(([s]) => score >= s)?.[1] ?? stops[0][1];
 }
 
 function frame(map: MLMap, pts: Position[]) {

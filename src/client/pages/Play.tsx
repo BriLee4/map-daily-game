@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Position } from "../../shared/geo";
-import { LIMITS } from "../../shared/protocol";
+import { AVATARS, LIMITS } from "../../shared/protocol";
 import { ConnBadge, fmt, km, Leaderboard, ordinal, Timer } from "../components/bits";
 import { Globe, type GlobeResultLine } from "../components/Globe";
-import { lastName, playerKey, rememberName } from "../lib/identity";
+import { lastAvatar, lastName, playerKey, rememberAvatar, rememberName } from "../lib/identity";
 import { navigate } from "../lib/router";
 import { useCountdown, useParty } from "../lib/useParty";
 
@@ -34,12 +34,12 @@ function PlayInner({ code }: { code: string }) {
   useEffect(() => setLocalPin(null), [state?.roundIndex, state?.phase]);
 
   const results: GlobeResultLine[] = useMemo(
-    () => (you?.last && you.guess ? [{ guess: you.guess, nearest: you.last.nearest, score: you.last.score, mine: true }] : []),
-    [you?.last, you?.guess],
+    () => (you?.last && you.guess ? [{ guess: you.guess, nearest: you.last.nearest, score: you.last.score, mine: true, avatar: you.avatar }] : []),
+    [you?.last, you?.guess, you?.avatar],
   );
 
   if (conn.fatal) return <Center><h2>{conn.fatal}</h2><button className="btn" onClick={() => navigate("/")}>Home</button></Center>;
-  if (conn.needName) return <NameForm onSubmit={(name) => send({ t: "join", name })} error={conn.error} />;
+  if (conn.needName) return <NameForm onSubmit={(name, avatar) => send({ t: "join", name, avatar })} error={conn.error} />;
   if (!state || !you) return <Center>Connecting…</Center>;
 
   const phase = state.phase;
@@ -51,6 +51,7 @@ function PlayInner({ code }: { code: string }) {
       <Center>
         <ConnBadge status={conn.status} />
         <p className="eyebrow">You're in!</p>
+        <div className="big-avatar" aria-hidden="true">{you.avatar}</div>
         <h1 className="big-name">{you.name}</h1>
         <p>Waiting for your teacher to start…</p>
         <p className="muted">{state.players.length} player{state.players.length === 1 ? "" : "s"} joined</p>
@@ -84,6 +85,7 @@ function PlayInner({ code }: { code: string }) {
         className="play-globe"
         onPick={canGuess ? (p) => { setLocalPin(p); send({ t: "guess", lng: p[0], lat: p[1] }); } : undefined}
         pin={phase === "reveal" ? null : pin}
+        pinAvatar={you.avatar}
         heat={phase === "heatmap" || phase === "reveal" ? state.heat : null}
         answerId={state.reveal?.countryId}
         results={results}
@@ -119,8 +121,12 @@ function PlayInner({ code }: { code: string }) {
   );
 }
 
-function NameForm({ onSubmit, error }: { onSubmit: (name: string) => void; error: string | null }) {
+function NameForm({ onSubmit, error }: { onSubmit: (name: string, avatar: string) => void; error: string | null }) {
   const [name, setName] = useState(lastName());
+  const [avatar, setAvatar] = useState<string>(() => {
+    const saved = lastAvatar();
+    return saved && (AVATARS as readonly string[]).includes(saved) ? saved : AVATARS[Math.floor(Math.random() * AVATARS.length)];
+  });
   return (
     <Center>
       <form
@@ -129,7 +135,8 @@ function NameForm({ onSubmit, error }: { onSubmit: (name: string) => void; error
           e.preventDefault();
           if (!name.trim()) return;
           rememberName(name.trim());
-          onSubmit(name.trim());
+          rememberAvatar(avatar);
+          onSubmit(name.trim(), avatar);
         }}
       >
         <h2>Pick a nickname</h2>
@@ -142,6 +149,17 @@ function NameForm({ onSubmit, error }: { onSubmit: (name: string) => void; error
           placeholder="Nickname"
           aria-label="Nickname"
         />
+        <fieldset className="avatar-pick">
+          <legend>Pick your icon</legend>
+          <div className="avatar-grid" role="radiogroup" aria-label="Pick your icon">
+            {AVATARS.map((a) => (
+              <button
+                key={a} type="button" role="radio" aria-checked={a === avatar}
+                className={a === avatar ? "on" : ""} onClick={() => setAvatar(a)}
+              >{a}</button>
+            ))}
+          </div>
+        </fieldset>
         {error && <p className="error">{error}</p>}
         <button className="btn btn-primary btn-lg" type="submit">Join</button>
       </form>

@@ -18,7 +18,7 @@ export function HostParty({ code }: { code: string }) {
   }, [joinUrl]);
 
   const results: GlobeResultLine[] = useMemo(
-    () => state?.reveal?.results.map((r) => ({ guess: r.guess, score: r.score })) ?? [],
+    () => state?.reveal?.results.map((r) => ({ guess: r.guess, score: r.score, avatar: r.avatar })) ?? [],
     [state?.reveal],
   );
   const roundScores = useMemo(
@@ -61,7 +61,7 @@ export function HostParty({ code }: { code: string }) {
           <ul className="chips">
             {state.players.map((p) => (
               <li key={p.id} className={p.connected ? "" : "offline"}>
-                {p.name}
+                <span className="avatar" aria-hidden="true">{p.avatar}</span> {p.name}
                 <button className="icon-btn" aria-label={`Remove ${p.name}`} onClick={() => confirm(`Remove ${p.name}?`) && send({ t: "kick", playerId: p.id })}>×</button>
               </li>
             ))}
@@ -85,6 +85,7 @@ export function HostParty({ code }: { code: string }) {
           {[podium[1], podium[0], podium[2]].map((r, i) =>
             r ? (
               <div key={r.p.id} className={`step step-${r.rank}`} style={{ order: i }}>
+                <div className="pavatar" aria-hidden="true">{r.p.avatar}</div>
                 <div className="pname">{r.p.name}</div>
                 <div className="pscore">{fmt(r.p.score)}</div>
                 <div className="block">{r.rank}</div>

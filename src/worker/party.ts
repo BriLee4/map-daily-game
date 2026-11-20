@@ -1,6 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
 import { scoreGuess, type CountryGeometry, type Position } from "../shared/geo";
 import {
+  AVATARS,
+  DEFAULT_AVATAR,
   LIMITS,
   type ClientMessage,
   type GameSettings,
@@ -34,6 +36,8 @@ interface Player {
   /** secret per-device key kept in the student's localStorage; never broadcast */
   key: string;
   name: string;
+  /** one of AVATARS; missing on players who joined before avatars existed */
+  avatar?: string;
   joinedAt: number;
   rounds: Record<number, PlayerRound>;
 }
@@ -353,7 +357,8 @@ export class Party extends DurableObject<Env> {
       if (Object.keys(s.players).length >= LIMITS.maxPlayers) throw new Error("This game is full.");
       const name = this.uniqueName(cleanName(msg.name));
       if (!name) throw new Error("Please enter a nickname.");
-      p = { id: crypto.randomUUID().slice(0, 8), key, name, joinedAt: Date.now(), rounds: {} };
+      const avatar = (AVATARS as readonly string[]).includes(msg.avatar ?? "") ? msg.avatar! : DEFAULT_AVATAR;
+      p = { id: crypto.randomUUID().slice(0, 8), key, name, avatar, joinedAt: Date.now(), rounds: {} };
       s.players[p.id] = p;
       await this.save();
       this.broadcast();
@@ -467,6 +472,7 @@ export class Party extends DurableObject<Env> {
     const players: PublicPlayer[] = board.map(({ player: p, score }) => ({
       id: p.id,
       name: p.name,
+      avatar: p.avatar ?? DEFAULT_AVATAR,
       score,
       connected: connected.has(p.key),
       answered: !!p.rounds[ri],
@@ -483,7 +489,7 @@ export class Party extends DurableObject<Env> {
           ? board.flatMap(({ player: p }) => {
               const r = p.rounds[ri];
               return r && r.score !== undefined
-                ? [{ playerId: p.id, name: p.name, guess: r.guess, km: r.km!, score: r.score }]
+                ? [{ playerId: p.id, name: p.name, avatar: p.avatar ?? DEFAULT_AVATAR, guess: r.guess, km: r.km!, score: r.score }]
                 : [];
             })
           : [];
@@ -512,6 +518,7 @@ export class Party extends DurableObject<Env> {
     return {
       id: p.id,
       name: p.name,
+      avatar: p.avatar ?? DEFAULT_AVATAR,
       score,
       guess: r?.guess ?? null,
       locked: !!r?.locked,

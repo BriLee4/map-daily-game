@@ -61,9 +61,7 @@ function Setup({ onStart }: { onStart: (region: string, rounds: number) => void 
   return (
     <div className="center-page">
       <div className="card practice-setup">
-        <p className="eyebrow">Practice</p>
         <h1>Practice on your own</h1>
-        <p className="muted">No code or sign-in needed. Find each country on the globe and see how close you get.</p>
 
         <fieldset className="practice-field">
           <legend>Where?</legend>

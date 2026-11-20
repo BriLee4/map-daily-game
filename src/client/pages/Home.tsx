@@ -35,7 +35,7 @@ export function Home() {
         </form>
         <div className="home-links">
           <a className="practice-link" href="/practice" onClick={(e) => { e.preventDefault(); navigate("/practice"); }}>
-            No code? Practice on your own →
+            Practice on your own →
           </a>
           <a className="teacher-link" href="/host">I'm a teacher →</a>
         </div>

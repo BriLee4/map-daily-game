@@ -33,7 +33,12 @@ export function Home() {
           />
           <button className="btn btn-primary btn-lg" disabled={clean.length !== 6}>Join game</button>
         </form>
-        <a className="teacher-link" href="/host">I'm a teacher →</a>
+        <div className="home-links">
+          <a className="practice-link" href="/practice" onClick={(e) => { e.preventDefault(); navigate("/practice"); }}>
+            No code? Practice on your own →
+          </a>
+          <a className="teacher-link" href="/host">I'm a teacher →</a>
+        </div>
       </div>
       <Suspense fallback={<div className="home-globe" aria-hidden="true" />}>
         <HomeGlobe />

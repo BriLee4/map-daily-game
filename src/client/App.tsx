@@ -5,6 +5,7 @@ import { navigate, usePath } from "./lib/router";
 // Map-heavy pages load on demand so the join screen is instant on school Wi-Fi.
 const Play = lazy(() => import("./pages/Play").then((m) => ({ default: m.Play })));
 const HostParty = lazy(() => import("./pages/HostParty").then((m) => ({ default: m.HostParty })));
+const Practice = lazy(() => import("./pages/Practice").then((m) => ({ default: m.Practice })));
 const HostHome = lazy(() => import("./pages/HostHome").then((m) => ({ default: m.HostHome })));
 
 export function App() {
@@ -25,5 +26,6 @@ function route(path: string) {
   if ((m = path.match(/^\/play\/([A-Za-z0-9]{6})\/?$/))) return <Play key={m[1]} code={m[1].toUpperCase()} />;
   if ((m = path.match(/^\/host\/party\/([A-Za-z0-9]{6})\/?$/))) return <HostParty key={m[1]} code={m[1].toUpperCase()} />;
   if (/^\/host\/?$/.test(path)) return <HostHome />;
+  if (/^\/practice\/?$/.test(path)) return <Practice />;
   return <Home />;
 }

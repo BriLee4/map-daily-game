@@ -1,4 +1,4 @@
-# 🌍 Daily Map Quiz
+# 🌍 Geo Map Quiz
 
 A live geography game for classrooms. The teacher projects a game, students join on their
 Chromebooks with a code, and each round everyone races the clock to drop a pin on a 3D globe.

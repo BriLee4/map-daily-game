@@ -50,7 +50,7 @@ export function HostHome() {
   return (
     <div className="page host-home">
       <header className="host-head">
-        <h1>Daily Map Quiz <span className="muted">· Teacher</span></h1>
+        <h1>Geo Map Quiz <span className="muted">· Teacher</span></h1>
         <span className="muted">{me}</span>
       </header>
       <div className="host-grid">

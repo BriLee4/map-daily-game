@@ -256,7 +256,7 @@ async function gameDetail(env: Env, email: string, id: string, csv: boolean): Pr
   return new Response(lines.join("\r\n"), {
     headers: {
       "content-type": "text/csv; charset=utf-8",
-      "content-disposition": `attachment; filename="daily-map-quiz-${date}-${game.code}.csv"`,
+      "content-disposition": `attachment; filename="geo-map-quiz-${date}-${game.code}.csv"`,
     },
   });
 }

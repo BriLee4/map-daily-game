@@ -6,10 +6,20 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
   "upload_source_maps": true,
+  // geomapquiz.com is the address teachers and students use; www redirects to it (a redirect
+  // rule on the zone). The Access app protects geomapquiz.com/host and /api/host.
+  "routes": [
+    { "pattern": "geomapquiz.com", "custom_domain": true },
+    { "pattern": "www.geomapquiz.com", "custom_domain": true }
+  ],
+  // One public address to share and protect: the old *.workers.dev URL is off.
+  "workers_dev": false,
   "assets": {
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    // The Worker handles the API (incl. WebSockets); everything else is the React SPA.
-    "run_worker_first": ["/api/*"]
+    // The Worker sees every request so it can send www.geomapquiz.com to geomapquiz.com; it
+    // handles /api/* itself and hands everything else to the React SPA via env.ASSETS.
+    "run_worker_first": true
   },
   "durable_objects": {
     "bindings": [{ "name": "PARTY", "class_name": "Party" }]

@@ -29,6 +29,14 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
+    // One canonical address: Access protects geomapquiz.com/host, and one origin keeps the sign-in
+    // cookie and same-origin checks simple.
+    if (url.hostname === "www.geomapquiz.com") {
+      url.hostname = "geomapquiz.com";
+      return Response.redirect(url.toString(), 301);
+    }
+    if (!path.startsWith("/api/")) return env.ASSETS.fetch(request);
+
     try {
       // ----------------------------------------------------------- student (public) routes
       let m = path.match(/^\/api\/party\/([A-Za-z0-9]{6})(\/ws)?$/);

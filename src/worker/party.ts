@@ -63,6 +63,8 @@ export interface InitParams {
   ownerEmail: string;
   settings: GameSettings;
   countries: RoundCountry[];
+  /** teacher's dashboard label, e.g. "Period 3"; only stored in D1 */
+  label?: string | null;
 }
 
 const LOBBY_TTL_MS = 12 * 60 * 60 * 1000; // an unfinished game is cleaned up after 12h
@@ -107,11 +109,11 @@ export class Party extends DurableObject<Env> {
     await this.save();
     await this.ctx.storage.setAlarm(now + LOBBY_TTL_MS);
     await this.env.DB.prepare(
-      `INSERT INTO games (id, code, owner_email, created_at, mode, timer_seconds, country_ids)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO games (id, code, owner_email, created_at, mode, timer_seconds, country_ids, label)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     )
       .bind(this.state.gameId, p.code, this.state.ownerEmail, now, p.settings.mode,
-        p.settings.timerSeconds, JSON.stringify(p.settings.countryIds))
+        p.settings.timerSeconds, JSON.stringify(p.settings.countryIds), p.label ?? null)
       .run();
     return true;
   }

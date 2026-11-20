@@ -300,3 +300,18 @@ input, select { border: 3px solid var(--text); border-radius: 0; background: var
 .maplibregl-ctrl-group { border: 3px solid var(--text) !important; border-radius: 0 !important; box-shadow: 3px 3px 0 var(--text) !important; background: var(--surface) !important; }
 .maplibregl-ctrl-group button + button { border-top: 2px solid var(--text) !important; }
 .maplibregl-ctrl-attrib { border-radius: 0 !important; background: rgb(255 249 234 / 85%) !important; }
+
+/* ---------- teacher dashboard: saved sets, continent add, rename/delete ---------- */
+.sets { display: grid; gap: 8px; justify-items: start; }
+.set-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.set-list li { display: inline-flex; align-items: center; border: 2px solid var(--text); background: var(--surface); }
+.set-load { appearance: none; border: 0; background: transparent; font: inherit; font-weight: 600; padding: 0.35em 0.6em; cursor: pointer; color: var(--text); display: inline-flex; gap: 0.5em; }
+.set-load:hover { background: var(--bg); }
+.set-save, .label-edit { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; width: 100%; }
+.set-save input, .label-edit input { flex: 1 1 180px; min-width: 0; }
+.matches button.continent { font-weight: 600; background: var(--teal-tint); }
+.matches button.continent:hover { filter: brightness(0.96); background: var(--teal-tint); }
+.picker-note { margin: 0; font-size: 0.9rem; }
+.picked-head { display: flex; justify-content: space-between; align-items: center; }
+.past-info { min-width: 0; flex: 1 1 200px; }
+.btn-ghost.danger { color: var(--warn); }

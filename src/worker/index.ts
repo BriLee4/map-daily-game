@@ -57,7 +57,7 @@ export default {
 
         if (path === "/api/host/games" && request.method === "GET") {
           const { results } = await env.DB.prepare(
-            `SELECT id, code, created_at, finished_at, mode, timer_seconds, country_ids, player_count
+            `SELECT id, code, label, created_at, finished_at, mode, timer_seconds, country_ids, player_count
              FROM games WHERE owner_email = ? ORDER BY created_at DESC LIMIT 100`,
           ).bind(email).all();
           return json({ games: results });
@@ -65,6 +65,21 @@ export default {
 
         m = path.match(/^\/api\/host\/games\/([A-Za-z0-9-]+)(\.csv)?$/);
         if (m && request.method === "GET") return gameDetail(env, email, m[1], !!m[2]);
+        if (m && !m[2] && request.method === "PATCH") return renameGame(request, env, email, m[1]);
+        if (m && !m[2] && request.method === "DELETE") return deleteGame(env, email, m[1]);
+
+        if (path === "/api/host/sets" && request.method === "GET") {
+          const { results } = await env.DB.prepare(
+            `SELECT id, name, country_ids, created_at FROM country_sets WHERE owner_email = ? ORDER BY created_at DESC LIMIT 200`,
+          ).bind(email).all();
+          return json({ sets: results });
+        }
+        if (path === "/api/host/sets" && request.method === "POST") return createSet(request, env, email);
+        m = path.match(/^\/api\/host\/sets\/([A-Za-z0-9-]+)$/);
+        if (m && request.method === "DELETE") {
+          const r = await env.DB.prepare(`DELETE FROM country_sets WHERE id = ? AND owner_email = ?`).bind(m[1], email).run();
+          return r.meta.changes ? json({ ok: true }) : err("Not found", 404);
+        }
 
         m = path.match(/^\/api\/host\/party\/([A-Za-z0-9]{6})\/ws$/);
         if (m) {
@@ -114,28 +129,82 @@ function forward(request: Request, role: "host" | "player", email?: string): Req
   return new Request(request.url, { method: "GET", headers });
 }
 
-async function createGame(request: Request, env: Env, email: string): Promise<Response> {
-  let body: { mode?: string; countryIds?: unknown; rounds?: unknown; timerSeconds?: unknown };
-  // A JSON content type can't be sent by a plain cross-site HTML form (defence in depth).
+/** Parses a JSON body, or returns the error response. A JSON content type can't be sent by a plain
+ * cross-site HTML form (defence in depth on top of sameOriginOk). */
+async function readJson<T>(request: Request): Promise<T | Response> {
   if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json"))
     return err("Expected a JSON request", 415);
   try {
-    body = await request.json();
+    const body = await request.json();
+    return body && typeof body === "object" ? (body as T) : err("Invalid JSON");
   } catch {
     return err("Invalid JSON");
   }
+}
+
+const MAX_LABEL = 60;
+/** Trimmed, length-capped label; "" means none. */
+function cleanLabel(v: unknown): string {
+  return typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, MAX_LABEL) : "";
+}
+
+function validCountryIds(v: unknown): string[] | string {
+  if (!Array.isArray(v)) return "Pick at least one country";
+  const ids = v.map(String);
+  if (ids.length < LIMITS.minRounds || ids.length > LIMITS.maxRounds) return `Pick ${LIMITS.minRounds}–${LIMITS.maxRounds} countries`;
+  const unknown = ids.find((id) => !BY_ID.has(id));
+  if (unknown) return `Unknown country id ${unknown}`;
+  if (new Set(ids).size !== ids.length) return "Each country can only be used once";
+  return ids;
+}
+
+async function renameGame(request: Request, env: Env, email: string, id: string): Promise<Response> {
+  const body = await readJson<{ label?: unknown }>(request);
+  if (body instanceof Response) return body;
+  const label = cleanLabel(body.label);
+  const r = await env.DB.prepare(`UPDATE games SET label = ? WHERE id = ? AND owner_email = ?`)
+    .bind(label || null, id, email).run();
+  return r.meta.changes ? json({ label }) : err("Not found", 404);
+}
+
+/** Only finished games can be deleted: a live game still writes its results here when it ends. */
+async function deleteGame(env: Env, email: string, id: string): Promise<Response> {
+  const game = await env.DB.prepare(`SELECT finished_at FROM games WHERE id = ? AND owner_email = ?`)
+    .bind(id, email).first<{ finished_at: number | null }>();
+  if (!game) return err("Not found", 404);
+  if (!game.finished_at) return err("Finish the game before deleting it", 409);
+  await env.DB.batch([
+    env.DB.prepare(`DELETE FROM game_players WHERE game_id = ?`).bind(id),
+    env.DB.prepare(`DELETE FROM games WHERE id = ? AND owner_email = ?`).bind(id, email),
+  ]);
+  return json({ ok: true });
+}
+
+async function createSet(request: Request, env: Env, email: string): Promise<Response> {
+  const body = await readJson<{ name?: unknown; countryIds?: unknown }>(request);
+  if (body instanceof Response) return body;
+  const name = cleanLabel(body.name);
+  if (!name) return err("Give the set a name");
+  const ids = validCountryIds(body.countryIds);
+  if (typeof ids === "string") return err(ids);
+  const set = { id: crypto.randomUUID(), name, country_ids: JSON.stringify(ids), created_at: Date.now() };
+  await env.DB.prepare(`INSERT INTO country_sets (id, owner_email, name, country_ids, created_at) VALUES (?, ?, ?, ?, ?)`)
+    .bind(set.id, email, set.name, set.country_ids, set.created_at).run();
+  return json({ set }, 201);
+}
+
+async function createGame(request: Request, env: Env, email: string): Promise<Response> {
+  const body = await readJson<{ mode?: string; countryIds?: unknown; rounds?: unknown; timerSeconds?: unknown; label?: unknown }>(request);
+  if (body instanceof Response) return body;
   const timerSeconds = Math.round(Number(body.timerSeconds));
   if (!(timerSeconds >= LIMITS.minTimer && timerSeconds <= LIMITS.maxTimer))
     return err(`Timer must be ${LIMITS.minTimer}–${LIMITS.maxTimer} seconds`);
 
   let countryIds: string[];
   if (body.mode === "custom") {
-    if (!Array.isArray(body.countryIds)) return err("Pick at least one country");
-    countryIds = body.countryIds.map(String);
-    if (countryIds.length < LIMITS.minRounds || countryIds.length > LIMITS.maxRounds)
-      return err(`Pick ${LIMITS.minRounds}–${LIMITS.maxRounds} countries`);
-    const unknown = countryIds.find((id) => !BY_ID.has(id));
-    if (unknown) return err(`Unknown country id ${unknown}`);
+    const ids = validCountryIds(body.countryIds);
+    if (typeof ids === "string") return err(ids);
+    countryIds = ids;
   } else if (body.mode === "random") {
     const rounds = Math.round(Number(body.rounds));
     if (!(rounds >= LIMITS.minRounds && rounds <= LIMITS.maxRounds))
@@ -151,9 +220,10 @@ async function createGame(request: Request, env: Env, email: string): Promise<Re
     return { id, name: f.properties.name, geometry: f.geometry };
   });
 
+  const label = cleanLabel(body.label);
   for (let attempt = 0; attempt < 8; attempt++) {
     const code = randomCode();
-    const params: InitParams = { code, ownerEmail: email, settings, countries };
+    const params: InitParams = { code, ownerEmail: email, settings, countries, label: label || null };
     if (await env.PARTY.getByName(code).init(params)) return json({ code }, 201);
   }
   return err("Couldn't allocate a game code, try again", 503);
